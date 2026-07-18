@@ -1,143 +1,213 @@
-"""Live density simulator for the RTPCC FastAPI backend.
+"""Generate live-looking density sensor data for a running RTPCC API.
 
-This script nudges a small set of venue edges over time and POSTs the updates
-to the running API server. It also queries the current route so a reroute can
-be observed from the terminal while the simulation runs.
+Run ``python scripts/simulate.py --demo-route n1 n6`` after starting Uvicorn.
+The simulator discovers edges from ``/venue/graph`` rather than depending on a
+specific venue topology.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import os
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Iterable
-from urllib import error, parse, request
+from datetime import datetime
+
+import requests
+
+
+API_BASE = os.getenv("RTPCC_API_BASE", "http://127.0.0.1:8000").rstrip("/")
+TICK_INTERVAL_SECONDS = 2.0
+REQUEST_TIMEOUT_SECONDS = 5.0
+MEANINGFUL_CHANGE = 0.05
 
 
 @dataclass(slots=True)
-class EdgeState:
+class SimulatedEdge:
     edge_id: str
     density: float
+    last_sent_density: float | None = None
+    status: str = "FREE_FLOW"
 
 
-def http_json(method: str, url: str, payload: dict[str, Any] | None = None, timeout: float = 5.0) -> Any:
-    data = None
-    headers = {"Accept": "application/json"}
-    if payload is not None:
-        data = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
+@dataclass(slots=True)
+class Surge:
+    edge_id: str
+    phase: str = "ramp"
+    ramp_ticks_remaining: int = 0
+    decay_ticks_remaining: int = 0
 
-    req = request.Request(url, data=data, headers=headers, method=method)
+
+def clamp(value: float, minimum: float = 0.0, maximum: float = 7.0) -> float:
+    return max(minimum, min(maximum, value))
+
+
+def fetch_graph(session: requests.Session, base_url: str) -> dict:
+    response = session.get(f"{base_url}/venue/graph", timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return response.json()
+
+
+def post_density(session: requests.Session, base_url: str, edge: SimulatedEdge) -> dict:
+    response = session.post(
+        f"{base_url}/simulate/density",
+        json={"edge_id": edge.edge_id, "density": round(edge.density, 2)},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Send live density simulation data to the RTPCC API.")
+    parser.add_argument("--base-url", default=API_BASE, help="API base URL (default: RTPCC_API_BASE or localhost)")
+    parser.add_argument("--interval", type=float, default=TICK_INTERVAL_SECONDS, help="Seconds between ticks")
+    parser.add_argument("--ticks", type=int, default=0, help="Number of ticks to run; 0 means until Ctrl+C")
+    parser.add_argument("--seed", type=int, help="Optional seed for a repeatable demo")
+    parser.add_argument(
+        "--demo-route",
+        nargs=2,
+        metavar=("START", "END"),
+        help="Poll and print the recommended route between these node IDs each tick",
+    )
+    return parser.parse_args()
+
+
+def start_surge(edges: list[SimulatedEdge], rng: random.Random) -> Surge:
+    selected = rng.choice(edges)
+    surge = Surge(edge_id=selected.edge_id, ramp_ticks_remaining=rng.randint(4, 6))
+    print(f"[SURGE START] edge {surge.edge_id} -> ramping density")
+    return surge
+
+
+def advance_density(edge: SimulatedEdge, surge: Surge | None, rng: random.Random) -> None:
+    """Apply either ordinary random drift or the active surge behaviour."""
+    if surge is None or edge.edge_id != surge.edge_id:
+        edge.density = clamp(edge.density + rng.gauss(0.0, 0.3))
+        return
+
+    if surge.phase == "ramp":
+        edge.density = clamp(edge.density + rng.uniform(1.5, 2.5))
+        surge.ramp_ticks_remaining -= 1
+        # Keep the ramp at its peak until its scheduled end.  This guarantees
+        # several consecutive STAMPEDE_RISK readings for the API's 3-reading
+        # smoothing window before the simulated crowd disperses.
+        if surge.ramp_ticks_remaining == 0:
+            surge.phase = "decay"
+            surge.decay_ticks_remaining = rng.randint(5, 8)
+            print(f"[SURGE END] edge {surge.edge_id} -> decaying")
+    else:
+        edge.density = clamp(edge.density - rng.uniform(0.65, 1.15))
+        surge.decay_ticks_remaining -= 1
+
+
+def poll_route(
+    session: requests.Session,
+    base_url: str,
+    start: str,
+    end: str,
+    previous_path: list[str] | None,
+    active_surge: Surge | None,
+) -> list[str] | None:
     try:
-        with request.urlopen(req, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-            return json.loads(body) if body else None
-    except error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"{method} {url} failed: {exc.code} {body}") from exc
+        response = session.get(
+            f"{base_url}/route",
+            params={"start": start, "end": end},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        route = response.json()
+    except requests.RequestException as exc:
+        print(f"  [ROUTE ERROR] {exc}")
+        return previous_path
 
-
-def clamp(value: float, lower: float = 0.0, upper: float = 6.0) -> float:
-    return max(lower, min(upper, value))
-
-
-def choose_edges(graph_payload: dict[str, Any], preferred: Iterable[str]) -> list[str]:
-    available = {edge["id"] for edge in graph_payload.get("edges", [])}
-    chosen = [edge_id for edge_id in preferred if edge_id in available]
-    if chosen:
-        return chosen
-    return sorted(available)[:3]
+    path = route["path"]
+    display = " -> ".join(path)
+    if previous_path is not None and path != previous_path:
+        old_display = " -> ".join(previous_path)
+        cause = active_surge.edge_id if active_surge else "a density update"
+        print(f"  !!! REROUTE TRIGGERED: {old_display} -> {display} due to {cause}")
+    else:
+        print(f"  Route: {display} (cost {route['total_cost']:.1f})")
+    return path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the RTPCC density simulator against a live API.")
-    parser.add_argument("--base-url", default="http://127.0.0.1:8000", help="Base URL of the FastAPI server")
-    parser.add_argument("--start", default="n1", help="Start node for route checks")
-    parser.add_argument("--end", default="n6", help="End node for route checks")
-    parser.add_argument("--interval", type=float, default=2.0, help="Seconds between update batches")
-    parser.add_argument("--steps", type=int, default=0, help="Number of batches to run; 0 runs until interrupted")
-    parser.add_argument("--seed", type=int, default=7, help="Random seed for repeatable walks")
-    parser.add_argument(
-        "--edges",
-        nargs="*",
-        default=["e6", "e5", "e4", "e3"],
-        help="Preferred edge IDs to simulate",
-    )
-    args = parser.parse_args()
+    args = parse_args()
+    if args.interval <= 0:
+        raise SystemExit("--interval must be greater than zero")
+    if args.ticks < 0:
+        raise SystemExit("--ticks cannot be negative")
 
-    random.seed(args.seed)
-    venue = http_json("GET", f"{args.base_url}/venue/graph")
-    edge_ids = choose_edges(venue, args.edges)
-    if not edge_ids:
-        raise SystemExit("No edges available from /venue/graph")
+    base_url = args.base_url.rstrip("/")
+    rng = random.Random(args.seed)
+    session = requests.Session()
+    try:
+        graph = fetch_graph(session, base_url)
+    except requests.RequestException as exc:
+        print(f"Could not reach RTPCC API at {base_url}: {exc}")
+        print("Start it first with: python -m uvicorn app.main:app --reload")
+        return
 
-    states = [EdgeState(edge_id=edge_id, density=random.uniform(0.8, 2.2)) for edge_id in edge_ids]
-    previous_alert_count = 0
-    batch = 0
-    surge_remaining = 0
+    edges = [
+        SimulatedEdge(edge_id=item["edge_id"], density=rng.uniform(0.5, 1.5), status=item["status"])
+        for item in graph.get("edges", [])
+    ]
+    if not edges:
+        print("The API returned a graph with no edges; nothing to simulate.")
+        return
 
-    print(f"Using edges: {', '.join(edge_ids)}")
-    print(f"Monitoring route: {args.start} -> {args.end}")
+    print(f"Connected to {base_url}; simulating {len(edges)} discovered edges.")
+    if args.demo_route:
+        print(f"Demo route: {args.demo_route[0]} -> {args.demo_route[1]}")
     print("Press Ctrl+C to stop.\n")
 
-    while True:
-        batch += 1
-        print(f"Batch {batch}")
-        if surge_remaining == 0 and batch % 6 == 0:
-            surge_remaining = 3
-            print(f"  Surge starting on {states[0].edge_id}")
+    tick = 0
+    next_surge_tick = rng.randint(15, 20)
+    active_surge: Surge | None = None
+    previous_path: list[str] | None = None
 
-        for index, state in enumerate(states):
-            drift = random.uniform(-0.35, 0.6)
-            if index == 0 and surge_remaining > 0:
-                next_density = random.uniform(5.0, 5.6)
-            else:
-                next_density = clamp(state.density + drift)
+    try:
+        while args.ticks == 0 or tick < args.ticks:
+            tick += 1
+            if active_surge is None and tick >= next_surge_tick:
+                active_surge = start_surge(edges, rng)
+                next_surge_tick = tick + rng.randint(15, 20)
 
-            state.density = next_density
-            response = http_json(
-                "POST",
-                f"{args.base_url}/simulate/density",
-                {"edge_id": state.edge_id, "density": round(state.density, 2)},
+            for edge in edges:
+                advance_density(edge, active_surge, rng)
+                if edge.last_sent_density is not None and abs(edge.density - edge.last_sent_density) < MEANINGFUL_CHANGE:
+                    continue
+                try:
+                    result = post_density(session, base_url, edge)
+                    edge.last_sent_density = edge.density
+                    edge.status = result["status"]
+                except requests.RequestException as exc:
+                    print(f"  [POST ERROR] {edge.edge_id}: {exc}")
+
+            summary = " ".join(
+                f"{edge.edge_id}={edge.density:.1f}({edge.status}){'*' if active_surge and edge.edge_id == active_surge.edge_id else ''}"
+                for edge in edges
             )
-            edge = response["edge"]
-            print(
-                f"  {edge['id']}: density={edge['current_density']:.2f} "
-                f"status={edge['current_status']} cost={edge['current_cost']}"
-            )
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] {summary}")
 
-        if surge_remaining > 0:
-            surge_remaining -= 1
+            if args.demo_route:
+                previous_path = poll_route(
+                    session, base_url, args.demo_route[0], args.demo_route[1], previous_path, active_surge
+                )
 
-        route = http_json("GET", f"{args.base_url}/route?{parse.urlencode({'start': args.start, 'end': args.end})}")
-        if route.get("rerouted"):
-            print(f"  Route rerouted: {route['route']} cost={route['total_cost']} reason={route['reroute_reason']}")
-        else:
-            print(f"  Route: {route['route']} cost={route['total_cost']}")
+            if active_surge and active_surge.phase == "decay" and active_surge.decay_ticks_remaining <= 0:
+                print(f"[SURGE COMPLETE] edge {active_surge.edge_id} returned to normal drift\n")
+                active_surge = None
 
-        alerts = http_json("GET", f"{args.base_url}/alerts")
-        alert_count = len(alerts.get("alerts", []))
-        if alert_count > previous_alert_count:
-            for alert in alerts["alerts"][previous_alert_count:alert_count]:
-                details = alert.get("details", {})
-                print(f"  Alert: {alert['event_type']} - {alert['message']} ({details})")
-            previous_alert_count = alert_count
-
-        print()
-
-        if args.steps and batch >= args.steps:
-            break
-
-        try:
-            time.sleep(args.interval)
-        except KeyboardInterrupt:
-            break
+            if args.ticks == 0 or tick < args.ticks:
+                time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print("\nSimulation stopped cleanly.")
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    main()
