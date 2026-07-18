@@ -1,0 +1,10 @@
+fastapi>=0.111
+uvicorn[standard]>=0.30
+networkx>=3.3
+pydantic>=2.7
+requests>=2.31
+
+[vision]
+numpy>=1.26
+opencv-python>=4.9
+torch>=2.2
