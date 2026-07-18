@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RTPCC Crowd-Safety Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="backdrop"></div>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">RTPCC Prototype</p>
+          <h1>Real-Time Crowd Safety and Evacuation Router</h1>
+          <p class="lede">
+            Simulation-first dashboard for venue density, risk thresholds, reroutes, and public alerts.
+          </p>
+        </div>
+
+        <div class="controls card">
+          <label>
+            API base URL
+            <input id="apiBase" type="text" value="http://127.0.0.1:8000" />
+          </label>
+          <div class="control-row">
+            <label>
+              Start
+              <input id="startNode" type="text" value="n1" />
+            </label>
+            <label>
+              End
+              <input id="endNode" type="text" value="n6" />
+            </label>
+          </div>
+          <div class="control-row buttons">
+            <button id="refreshBtn" type="button">Refresh now</button>
+            <button id="speechBtn" type="button" class="ghost">Test speech</button>
+          </div>
+          <p id="statusLine" class="status-line">Idle.</p>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card panel wide">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Venue graph</p>
+              <h2>Nodes and corridor state</h2>
+            </div>
+            <div id="routeBadge" class="pill neutral">Route not loaded</div>
+          </div>
+          <div id="routeTrail" class="route-trail"></div>
+          <div class="split">
+            <div>
+              <h3>Nodes</h3>
+              <div id="nodesList" class="node-list"></div>
+            </div>
+            <div>
+              <h3>Edges</h3>
+              <div id="edgesList" class="edge-list"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Recommendation</p>
+              <h2>Best route</h2>
+            </div>
+            <div id="rerouteState" class="pill neutral">Waiting</div>
+          </div>
+          <div id="routeSummary" class="route-summary"></div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Alert feed</p>
+              <h2>Threshold and reroute events</h2>
+            </div>
+            <div id="alertCount" class="pill neutral">0 alerts</div>
+          </div>
+          <div id="alertsList" class="alerts-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
