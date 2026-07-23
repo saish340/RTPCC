@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" font-family="'Segoe UI', Inter, system-ui, sans-serif">
+  <defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E293B" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/>
+    </marker>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0F172A"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+
+  <!-- Title -->
+  <text x="400" y="32" text-anchor="middle" fill="#F8FAFC" font-size="16" font-weight="700" letter-spacing="2">VENUE FLOOR PLAN — CONVENTION HALL</text>
+  <text x="400" y="50" text-anchor="middle" fill="#64748B" font-size="10">Schematic Layout  |  Not to Scale</text>
+
+  <!-- ==================== FLOOR PATHS (base corridors) ==================== -->
+
+  <!-- Main concourse pathways -->
+  <g fill="none" stroke="#475569" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" opacity="0.4">
+    <!-- n2-n3 horizontal -->
+    <path d="M 180 380 L 180 200 L 320 200"/>
+    <!-- n2-n4 diagonal corridor -->
+    <path d="M 180 380 L 380 380"/>
+    <!-- n3-n4 horizontal -->
+    <path d="M 320 200 L 450 200"/>
+    <!-- n4-n5 horizontal -->
+    <path d="M 450 200 L 550 200 L 550 380"/>
+    <!-- n5-n6 horizontal -->
+    <path d="M 550 380 L 680 380"/>
+    <!-- n2-n1 vertical (entrance) -->
+    <path d="M 180 380 L 180 500"/>
+    <!-- n3-n7 diagonal -->
+    <path d="M 320 200 L 680 130"/>
+    <!-- n5-n7 diagonal -->
+    <path d="M 550 380 L 680 130"/>
+    <!-- n6-n7 connection -->
+    <path d="M 680 380 L 680 130"/>
+    <!-- n4-n6 diagonal -->
+    <path d="M 450 200 L 680 380"/>
+  </g>
+
+  <!-- ==================== EDGE LABELS (corridor names) ==================== -->
+
+  <g fill="#64748B" font-size="9" text-anchor="middle">
+    <text x="80" y="445">e1 · Entrance Concourse</text>
+    <text x="250" y="175">e2 · North Wing Link</text>
+    <text x="385" y="175">e3 · North Concourse</text>
+    <text x="310" y="410">e7 · Main Concourse</text>
+    <text x="500" y="290">e4 · South Concourse</text>
+    <text x="615" y="410">e6 · Atrium–Exit A</text>
+    <text x="620" y="445">e5 · South–Exit A</text>
+    <text x="470" y="120">e8 · North–Exit B</text>
+    <text x="630" y="260">e9 · South–Exit B</text>
+    <text x="600" y="160">e10 · Exit A–Exit B</text>
+  </g>
+
+  <!-- ==================== NODES (zones) ==================== -->
+
+  <!-- n1: Main Entrance -->
+  <g transform="translate(180, 520)">
+    <rect x="-50" y="-18" width="100" height="36" rx="6" fill="#10B981" opacity="0.15"/>
+    <rect x="-50" y="-18" width="100" height="36" rx="6" fill="none" stroke="#10B981" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="10" fill="#10B981" filter="url(#glow)"/>
+    <circle cx="0" cy="0" r="4" fill="#fff"/>
+    <text x="0" y="28" text-anchor="middle" fill="#10B981" font-size="11" font-weight="700">n1 · Main Entrance</text>
+    <text x="0" y="40" text-anchor="middle" fill="#6EE7B7" font-size="9">▼ Entry Point ▼</text>
+  </g>
+
+  <!-- n2: Lobby Junction -->
+  <g transform="translate(180, 380)">
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="#3B82F6" opacity="0.1"/>
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="none" stroke="#3B82F6" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="12" fill="#3B82F6" filter="url(#glow)"/>
+    <text x="0" y="4" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Lobby</text>
+    <text x="0" y="30" text-anchor="middle" fill="#93C5FD" font-size="10" font-weight="600">n2 · Junction</text>
+  </g>
+
+  <!-- n3: North Corridor -->
+  <g transform="translate(320, 200)">
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="#3B82F6" opacity="0.1"/>
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="none" stroke="#3B82F6" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="12" fill="#3B82F6"/>
+    <text x="0" y="4" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">North</text>
+    <text x="0" y="16" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Corridor</text>
+    <text x="0" y="34" text-anchor="middle" fill="#93C5FD" font-size="10" font-weight="600">n3 · Junction</text>
+  </g>
+
+  <!-- n4: Atrium -->
+  <g transform="translate(450, 200)">
+    <rect x="-55" y="-50" width="110" height="100" rx="10" fill="#F59E0B" opacity="0.08"/>
+    <rect x="-55" y="-50" width="110" height="100" rx="10" fill="none" stroke="#F59E0B" stroke-width="1.5"/>
+    <!-- Atrium icon: star/diamond shape -->
+    <circle cx="0" cy="0" r="14" fill="#F59E0B" filter="url(#glow)"/>
+    <text x="0" y="4" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">AT</text>
+    <text x="0" y="28" text-anchor="middle" fill="#FDE68A" font-size="11" font-weight="700">n4 · Atrium</text>
+    <text x="0" y="40" text-anchor="middle" fill="#FBBF24" font-size="8">Central Hub</text>
+  </g>
+
+  <!-- n5: South Corridor -->
+  <g transform="translate(550, 380)">
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="#3B82F6" opacity="0.1"/>
+    <rect x="-48" y="-42" width="96" height="84" rx="8" fill="none" stroke="#3B82F6" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="12" fill="#3B82F6"/>
+    <text x="0" y="4" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">South</text>
+    <text x="0" y="16" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">Corridor</text>
+    <text x="0" y="34" text-anchor="middle" fill="#93C5FD" font-size="10" font-weight="600">n5 · Junction</text>
+  </g>
+
+  <!-- n6: Emergency Exit A -->
+  <g transform="translate(680, 380)">
+    <rect x="-52" y="-48" width="104" height="96" rx="8" fill="#EF4444" opacity="0.12"/>
+    <rect x="-52" y="-48" width="104" height="96" rx="8" fill="none" stroke="#EF4444" stroke-width="2"/>
+    <rect x="-32" y="-32" width="64" height="64" rx="4" fill="none" stroke="#EF4444" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="0" y="0" text-anchor="middle" fill="#EF4444" font-size="22" font-weight="800">EXIT</text>
+    <text x="0" y="24" text-anchor="middle" fill="#FCA5A5" font-size="10" font-weight="600">n6 · Exit A</text>
+    <text x="0" y="38" text-anchor="middle" fill="#EF4444" font-size="9">→ East</text>
+  </g>
+
+  <!-- n7: Emergency Exit B -->
+  <g transform="translate(680, 130)">
+    <rect x="-52" y="-48" width="104" height="96" rx="8" fill="#EF4444" opacity="0.12"/>
+    <rect x="-52" y="-48" width="104" height="96" rx="8" fill="none" stroke="#EF4444" stroke-width="2"/>
+    <rect x="-32" y="-32" width="64" height="64" rx="4" fill="none" stroke="#EF4444" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="0" y="0" text-anchor="middle" fill="#EF4444" font-size="22" font-weight="800">EXIT</text>
+    <text x="0" y="24" text-anchor="middle" fill="#FCA5A5" font-size="10" font-weight="600">n7 · Exit B</text>
+    <text x="0" y="38" text-anchor="middle" fill="#EF4444" font-size="9">→ North</text>
+  </g>
+
+  <!-- ==================== LEGEND ==================== -->
+
+  <g transform="translate(30, 560)">
+    <rect x="0" y="0" width="250" height="36" rx="6" fill="#1E293B" opacity="0.9"/>
+    <circle cx="16" cy="18" r="5" fill="#10B981"/>
+    <text x="28" y="22" fill="#CBD5E1" font-size="10">Entry</text>
+    <circle cx="80" cy="18" r="5" fill="#EF4444"/>
+    <text x="92" y="22" fill="#CBD5E1" font-size="10">Emergency Exit</text>
+    <circle cx="180" cy="18" r="5" fill="#3B82F6"/>
+    <text x="192" y="22" fill="#CBD5E1" font-size="10">Junction</text>
+  </g>
+
+  <!-- Scale bar -->
+  <g transform="translate(590, 580)">
+    <line x1="0" y1="0" x2="100" y2="0" stroke="#64748B" stroke-width="1.5"/>
+    <line x1="0" y1="-3" x2="0" y2="3" stroke="#64748B" stroke-width="1.5"/>
+    <line x1="100" y1="-3" x2="100" y2="3" stroke="#64748B" stroke-width="1.5"/>
+    <text x="50" y="-5" text-anchor="middle" fill="#64748B" font-size="9">≈ 50 m</text>
+  </g>
+</svg>

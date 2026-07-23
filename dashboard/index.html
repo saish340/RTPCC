@@ -1,92 +1,247 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RTPCC Crowd-Safety Dashboard</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <div class="backdrop"></div>
-    <main class="shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">RTPCC Prototype</p>
-          <h1>Real-Time Crowd Safety and Evacuation Router</h1>
-          <p class="lede">
-            Simulation-first dashboard for venue density, risk thresholds, reroutes, and public alerts.
-          </p>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RTPCC — Real-Time Predictive Crowd Control</title>
+  <link rel="stylesheet" href="./styles.css"/>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- ─── TOP NAVBAR ─── -->
+  <header class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-mark">
+        <i data-lucide="shield" class="logo-icon"></i>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">RTPCC</span>
+        <span class="brand-sub">Real-Time Predictive Crowd Control</span>
+      </div>
+    </div>
+    <div class="navbar-center">
+      <span id="currentTime" class="navbar-time">--:--:--</span>
+    </div>
+    <div class="navbar-end">
+      <div class="connection-status" id="connectionStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusLabel">Connecting</span>
+      </div>
+      <div class="settings-group">
+        <label class="setting-input">
+          <span>API</span>
+          <input id="apiBase" type="text" value="http://127.0.0.1:8000"/>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── KPI GRID ─── -->
+  <section class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card" data-kpi="activeZones">
+      <div class="kpi-icon" style="--kpi-color: var(--primary);"><i data-lucide="map"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiActiveZones">0</span>
+        <span class="kpi-label">Active Zones</span>
+      </div>
+    </div>
+    <div class="kpi-card" data-kpi="alerts">
+      <div class="kpi-icon" style="--kpi-color: var(--danger);"><i data-lucide="bell"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiAlerts">0</span>
+        <span class="kpi-label">Active Alerts</span>
+      </div>
+    </div>
+    <div class="kpi-card" data-kpi="maxDensity">
+      <div class="kpi-icon" style="--kpi-color: var(--warning);"><i data-lucide="trending-up"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiMaxDensity">0.00</span>
+        <span class="kpi-label">Max Density (p/m²)</span>
+      </div>
+    </div>
+    <div class="kpi-card" data-kpi="avgDensity">
+      <div class="kpi-icon" style="--kpi-color: var(--success);"><i data-lucide="bar-chart-3"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiAvgDensity">0.00</span>
+        <span class="kpi-label">Avg Density (p/m²)</span>
+      </div>
+    </div>
+    <div class="kpi-card" data-kpi="routeStatus">
+      <div class="kpi-icon" style="--kpi-color: var(--info);"><i data-lucide="navigation"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiRouteStatus">--</span>
+        <span class="kpi-label">Route Status</span>
+      </div>
+    </div>
+    <div class="kpi-card" data-kpi="backend">
+      <div class="kpi-icon" style="--kpi-color: var(--muted-text);"><i data-lucide="server"></i></div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpiBackend">--</span>
+        <span class="kpi-label">Backend</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── SETTINGS BAR ─── -->
+  <div class="settings-bar">
+    <div class="settings-row">
+      <label>Source <input id="startNode" type="text" value="n1" class="input-sm"/></label>
+      <label>Destination <input id="endNode" type="text" value="n6" class="input-sm"/></label>
+      <button id="refreshBtn" type="button" class="btn btn-primary btn-sm">
+        <i data-lucide="refresh-cw" class="icon-sm"></i> Refresh
+      </button>
+      <button id="speechBtn" type="button" class="btn btn-ghost btn-sm">
+        <i data-lucide="volume-2" class="icon-sm"></i> Test Speech
+      </button>
+      <span id="statusLine" class="status-line-sm">Idle</span>
+    </div>
+  </div>
+
+  <!-- ─── MAIN 3-COLUMN LAYOUT ─── -->
+  <div class="main-layout">
+
+    <!-- LEFT: VENUE GRAPH -->
+    <section class="panel panel-graph" id="graphPanel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="git-branch" class="panel-icon"></i>
+          <h2>Venue Graph</h2>
         </div>
-
-        <div class="controls card">
-          <label>
-            API base URL
-            <input id="apiBase" type="text" value="http://127.0.0.1:8000" />
-          </label>
-          <div class="control-row">
-            <label>
-              Start
-              <input id="startNode" type="text" value="n1" />
-            </label>
-            <label>
-              End
-              <input id="endNode" type="text" value="n6" />
-            </label>
-          </div>
-          <div class="control-row buttons">
-            <button id="refreshBtn" type="button">Refresh now</button>
-            <button id="speechBtn" type="button" class="ghost">Test speech</button>
-          </div>
-          <p id="statusLine" class="status-line">Idle.</p>
+        <div class="panel-badges">
+          <span class="badge-pill" id="graphNodeCount">0 nodes</span>
+          <span class="badge-pill" id="graphEdgeCount">0 edges</span>
+          <button id="viewToggleBtn" class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:0.7rem">
+            <i data-lucide="map" class="icon-sm" id="viewToggleIcon"></i>
+            <span id="viewToggleLabel">Map</span>
+          </button>
         </div>
-      </header>
-
-      <section class="grid">
-        <article class="card panel wide">
-          <div class="panel-head">
-            <div>
-              <p class="section-label">Venue graph</p>
-              <h2>Nodes and corridor state</h2>
-            </div>
-            <div id="routeBadge" class="pill neutral">Route not loaded</div>
+      </div>
+      <div class="panel-body" style="padding:0;overflow:hidden">
+        <div class="graph-container" id="graphContainer" style="display:flex">
+          <svg id="graphSvg" class="graph-svg" viewBox="0 0 500 400" preserveAspectRatio="xMidYMid meet"></svg>
+          <img id="venueMapImg" src="./venue_map.svg" class="venue-map-img" style="display:none" alt="Venue Floor Plan"/>
+          <div class="graph-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#10B981"></span>FREE_FLOW</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#FACC15"></span>HIGH_DENSITY</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#FB923C"></span>CRITICAL</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#EF4444"></span>STAMPEDE</span>
           </div>
-          <div id="routeTrail" class="route-trail"></div>
-          <div class="split">
-            <div>
-              <h3>Nodes</h3>
-              <div id="nodesList" class="node-list"></div>
-            </div>
-            <div>
-              <h3>Edges</h3>
-              <div id="edgesList" class="edge-list"></div>
-            </div>
-          </div>
-        </article>
+        </div>
+      </div>
+    </section>
 
-        <article class="card panel">
-          <div class="panel-head">
-            <div>
-              <p class="section-label">Recommendation</p>
-              <h2>Best route</h2>
-            </div>
-            <div id="rerouteState" class="pill neutral">Waiting</div>
+    <!-- CENTER: LIVE FEED -->
+    <section class="panel panel-feed" id="feedPanel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="camera" class="panel-icon"></i>
+          <h2>Live Feed</h2>
+        </div>
+        <div class="panel-badges">
+          <span class="badge-pill badge-pulse" id="feedStatus">No Feed</span>
+        </div>
+      </div>
+      <div class="panel-body feed-body" id="feedBody">
+        <div class="feed-placeholder" id="feedPlaceholder">
+          <i data-lucide="video-off" class="feed-placeholder-icon"></i>
+          <p class="feed-placeholder-text">No Camera Feed</p>
+          <p class="feed-placeholder-sub">Connect a vision pipeline to see zone overlays</p>
+        </div>
+        <div class="feed-canvas-container" id="feedCanvasContainer" style="display:none;">
+          <canvas id="feedCanvas"></canvas>
+        </div>
+        <div class="edge-info-panel" id="edgeInfoPanel" style="display:none;">
+          <div class="edge-info-header">
+            <span id="edgeInfoTitle">Edge Details</span>
+            <button id="edgeInfoClose" class="btn-icon"><i data-lucide="x"></i></button>
           </div>
-          <div id="routeSummary" class="route-summary"></div>
-        </article>
+          <div class="edge-info-body" id="edgeInfoBody"></div>
+        </div>
+      </div>
+    </section>
 
-        <article class="card panel">
-          <div class="panel-head">
-            <div>
-              <p class="section-label">Alert feed</p>
-              <h2>Threshold and reroute events</h2>
-            </div>
-            <div id="alertCount" class="pill neutral">0 alerts</div>
-          </div>
-          <div id="alertsList" class="alerts-list"></div>
-        </article>
-      </section>
-    </main>
+    <!-- RIGHT: ALERT FEED -->
+    <section class="panel panel-alerts" id="alertsPanel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="bell" class="panel-icon"></i>
+          <h2>Alert Feed</h2>
+        </div>
+        <div class="panel-badges">
+          <span class="badge-pill" id="alertCount">0</span>
+        </div>
+      </div>
+      <div class="panel-body alerts-body" id="alertsBody">
+        <div class="alerts-scroll" id="alertsList"></div>
+      </div>
+    </section>
 
-    <script src="./app.js"></script>
-  </body>
+  </div>
+
+  <!-- ─── BOTTOM ROW ─── -->
+  <div class="bottom-layout">
+
+    <!-- ROUTE DETAILS -->
+    <section class="panel panel-route">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="route" class="panel-icon"></i>
+          <h2>Route</h2>
+        </div>
+        <div class="panel-badges">
+          <span class="badge-pill" id="routeBadge">Waiting</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="routeSummary" class="route-summary">
+          <div class="route-skeleton">Loading route...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DENSITY TREND -->
+    <section class="panel panel-trend">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="activity" class="panel-icon"></i>
+          <h2>Density Trend</h2>
+        </div>
+        <div class="panel-badges">
+          <select id="trendEdgeSelect" class="select-sm">
+            <option value="__all__">All Zones</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- SYSTEM HEALTH -->
+    <section class="panel panel-health">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <i data-lucide="activity" class="panel-icon"></i>
+          <h2>System Health</h2>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="health-grid" id="healthGrid">
+          <div class="health-item" data-service="api"><span class="health-name">API</span><span class="health-indicator" id="healthApi">●</span><span class="health-label" id="healthApiLabel">Checking</span></div>
+          <div class="health-item" data-service="vision"><span class="health-name">Vision</span><span class="health-indicator" id="healthVision">●</span><span class="health-label" id="healthVisionLabel">Offline</span></div>
+          <div class="health-item" data-service="routing"><span class="health-name">Routing</span><span class="health-indicator" id="healthRouting">●</span><span class="health-label" id="healthRoutingLabel">Checking</span></div>
+          <div class="health-item" data-service="simulator"><span class="health-name">Simulator</span><span class="health-indicator" id="healthSimulator">●</span><span class="health-label" id="healthSimulatorLabel">Unknown</span></div>
+          <div class="health-item" data-service="model"><span class="health-name">CSRNet</span><span class="health-indicator" id="healthModel">●</span><span class="health-label" id="healthModelLabel">Offline</span></div>
+          <div class="health-item" data-service="camera"><span class="health-name">Camera</span><span class="health-indicator" id="healthCamera">●</span><span class="health-label" id="healthCameraLabel">Offline</span></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="./app.js"></script>
+</body>
 </html>
